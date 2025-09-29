@@ -1,23 +1,79 @@
 import PhilsanLogo from "../assets/philsan-38th.png"
 import PhilsanTheme from "../assets/philsan-38th-theme.png"
 import { textRegfields, membersRadio, souvenirRadio, certRadio  } from "../Config/completeRegfields";
-import React, { useRef } from "react";
+import { generateToken } from "./generateToken";
+import { getSponsorList } from "../../supabaseService";
+import React, { useState, useEffect, useRef } from "react";
+import { supabase } from "../../supabaseClient";
 
 const CompleteDetails = () => {
 
     const fileInputRef = useRef(null);
 
-    const handleClick = () => {
+    const [otherSponsor, setOthersponsor] = useState('')
+    const [regDetails, setRegDetails] = useState({
+        email: null,
+        first_name: null,
+        last_name: null,
+        middle_name: null,
+        mobile: null,
+        company: null,
+        position: null,
+        agri_license: null,
+        membership: null,
+        souvenir: null,
+        certificate_needed: null,
+        sponsored: "N/A",
+        sponsor: null,
+        // payment: sponsor.name === "Philsan Secretariat" ?  null : "sponsored",
+        payment: "N/A",
+        reg_request: new Date().toISOString(),
+        reg_status: "pending",
+        token: generateToken(16)
+    });
+    
+    const [sponsorList, setSponsorList] = useState([])
+    
+    useEffect(() => {
+        getSponsorList().then(setSponsorList);
+    }, [])
+    
+    const handleChange = (e) => {
+
+
+        if(e.target.name === "payment" && e.target.files.length > 0 ) {
+            setProof(e.target.files[0])
+            setRegDetails(prev => ({
+                ...prev,
+                payment: e.target.files[0].name.replace(/\s+/g, "_") //store actual filename in the regDetails state
+            }));
+        } else if(e.target.name === "others") {
+            setOthersponsor(e.target.value)
+        } else {
+            setRegDetails(prev => ({
+                ...prev,
+                [e.target.name]: e.target.value
+            }));
+        }
+    }  
+
+    const handleProofofpayment = () => {
         fileInputRef.current.click(); // programmatically open file picker
     };
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
-        if (file && onUpload) {
-        onUpload(file); // pass file to parent handler
+        
+        if (file) {
+            setRegDetails(prev => ({
+                ...prev,
+                ["payment"]: file
+            })); // pass file to parent handler
         }
     };
-    
+
+    console.log(regDetails)
+
     return (
         <div className="relative pt-[50px] px-[50px] pb-[50px] shadow-xl overflow-hidden rounded-2xl bg-[linear-gradient(to_bottom,#ffffff_0%,#ffffff_60%,#CBF9B6_100%)]">
             <div className="flex justify-between items-center">
@@ -33,7 +89,10 @@ const CompleteDetails = () => {
                             return (
                                 <div key={"textfield"+index} className="pb-[10px]">
                                     <p>{item.placeHolder}</p>
-                                    <input className="border-[#339544] border-[1px] bg-[#eaeeeb] p-[10px] rounded-md w-[100%]" type={item.type} />
+                                    <input 
+                                        className="border-[#339544] border-[1px] bg-[#eaeeeb] p-[10px] rounded-md w-[100%]" 
+                                        type={item.type} 
+                                        name={item.id} value={item.value} onChange={(e) => handleChange(e)}/>
                                 </div>
                             )
                         })
@@ -71,6 +130,36 @@ const CompleteDetails = () => {
                         </div>
                     </div> */}
 
+                    <div className="flex flex-col">
+                        <p className="font-[700] text-[#1f783b]">Who's your sponsor?</p>
+                        
+                        {regDetails["sponsor"] === false && (
+                            <p className="text-[red]">This field is required</p>
+                        )}
+                        <select
+                            className="bg-[#eaeeeb] p-[10px] rounded-md"
+                            name="sponsor"
+                            value={regDetails["sponsor"] || ""}
+                            onChange={handleChange}
+                        >
+                        <option value="">Select a sponsor</option>
+                        <option value="Non-Sponsored">Non-Sponsored</option>
+                        <option value="others">Others</option>
+                        
+                        {sponsorList.map((i, index) => (
+                            <option key={"sponsor-name" + index} value={i.sponsor_name}>{i.sponsor_name}</option>
+                        ))}
+                        </select>
+                    </div>
+
+                    <div className={`pb-[10px] ${regDetails.sponsor === "others" ? "block" : "hidden"}`}>
+                        <p>Please specify your sponsor</p>
+                        <input 
+                            className="border-[#339544] border-[1px] bg-[#eaeeeb] p-[10px] rounded-md w-[100%]" 
+                            type={"text"} 
+                            name={"others"} value={otherSponsor} onChange={(e) => handleChange(e)}/>
+                    </div>
+
                     {/* Certificate of Attendance --> */}
                     <div className="flex flex-col pt-[10px]">
                         <p className="font-[700] text-[#1f783b]">Do you need a Certificate of Attendance?</p>
@@ -86,7 +175,7 @@ const CompleteDetails = () => {
                         </div>
                     </div>
 
-                    <div>
+                    <div className="pt-[20px]">
                         {/* Hidden input */}
                         <input
                             type="file"
@@ -98,10 +187,10 @@ const CompleteDetails = () => {
 
                         {/* Custom button */}
                         <button
-                            onClick={handleClick}
+                            onClick={handleProofofpayment}
                             className="px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
                         >
-                            Upload Image
+                            Upload Proof of payment
                         </button>
                     </div>
                     
